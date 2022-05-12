@@ -13,17 +13,11 @@ db = DBInterface.connect(SQLite.DB, "exercise.db")
 table_info = reflect(db).tables
 
 weights = table_info[:weights]
-running = table_info[:running]
 
 weights_data =
     From(weights) |> FunSQL.render |> sql -> DBInterface.execute(db, sql) |> DataFrame
 
 weights_data.WORKOUT_DATE = Dates.Date.(weights_data.WORKOUT_DATE)
-
-running_data =
-    From(running) |> FunSQL.render |> sql -> DBInterface.execute(db, sql) |> DataFrame
-
-running_data.WORKOUT_DATE = Dates.Date.(running_data.WORKOUT_DATE)
 
 pd(; x, y, name) =
     PlotData(x = x, y = y, plot = StipplePlotly.Charts.PLOT_TYPE_LINE, name = name)
@@ -48,20 +42,6 @@ export Model
 
     config_weight_data::R{PlotConfig} = PlotConfig()
 
-    plot_running_data::R{Vector{PlotData}} = [
-        pd(x = group.WORKOUT_DATE, y = group.DISTANCE, name = first(group.RUN_TYPE)) for
-        group in groupby(running_data, :RUN_TYPE)
-    ]
-
-    layout_running_data::R{PlotLayout} = PlotLayout(
-        title = PlotLayoutTitle(text = "Distance Ran Over Year", font = Font(24)),
-        xaxis = [PlotLayoutAxis(xy = "x", title_text = "Date")],
-        yaxis = [PlotLayoutAxis(xy = "y", title_text = "Miles Ran")],
-        showlegend = true,
-    )
-
-    config_running_data::R{PlotConfig} = PlotConfig()
-
 end
 
 model = Model |> init
@@ -69,30 +49,22 @@ model = Model |> init
 function ui(model)
     page(
         model,
-        [
-            row([
-                cell(
-                    class = "plots",
-                    [
-                        plot(
-                            :plot_weight_data,
-                            layout = :layout_weight_data,
-                            config = :config_weight_data,
-                        ),
-                    ],
-                ),
-                cell(
-                    class = "plots",
-                    [
-                        plot(
-                            :plot_running_data,
-                            layout = :layout_running_data,
-                            config = :config_running_data,
-                        ),
-                    ],
-                ),
-            ],),
-        ],
+        class = "container",
+       
+        list(bordered=true, separator=true, [
+          
+          item(clickable=true, vripple=true, [
+            itemsection([
+                plot(
+                "{data}",
+                layout = :layout_weight_data,
+                config = :config_weight_data,
+                )
+            ])
+          ], @recur(:"data in plot_weight_data"))
+          
+        ])
+      
     )
 end
 
